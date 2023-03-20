@@ -1,9 +1,9 @@
-Code structure:
-2dpass: contains files on 3D semantic segmentation, and ViTPointFuser
+### Code structure:
+### 2dpass: contains files on 3D semantic segmentation, and ViTPointFuser
 Reference: https://github.com/yanx27/2DPASS
 - Refer to https://github.com/yanx27/2DPASS for information on the pretrained network, how to train and test the model
 
-ViTPointFuser
+### ViTPointFuser
 Reference: https://github.com/huggingface/transformers
 - To train/test ViTPointFuser,
 1. Amend the configuration file in config/2DPASS-fuser-nuscenese.yaml
@@ -18,7 +18,7 @@ Reference: https://github.com/huggingface/transformers
 *** Note: the model_name variable saved in the configurations file is used for initialization of the model.
 
 
-bevfusion: contains files on 3D object detection
+### bevfusion: contains files on 3D object detection
 Reference: https://github.com/mit-han-lab/bevfusion
 - Refer to https://github.com/mit-han-lab/bevfusion for information on the pretrained network, how to train and test the model
 - To save object detections:
