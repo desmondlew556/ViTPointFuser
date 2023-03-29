@@ -3,14 +3,47 @@
 contains files on 3D semantic segmentation, and ViTPointFuser
 Reference: https://github.com/yanx27/2DPASS
 - Refer to https://github.com/yanx27/2DPASS for information on the pretrained network, how to train and test the model
+- Note. Add a soft link with name "dataset" to the data root in the bevfusion folder. 
+The data root should have the following structure (refer to BEVFusion and 2DPASS github for data preparation steps):
+2dpass
+├── network
+├── dataloader
+├── config
+├── data
+│   ├── nuscenes
+│   │   ├── maps
+│   │   ├── samples
+│   │   ├── sweeps
+│   │   ├── v1.0-test
+│   │   |   ├── category.json
+│   │   |   ├── lidarseg.json
+|   |   ├── v1.0-trainval
+│   │   |   ├── category.json
+│   │   |   ├── lidarseg.json
+│   │   ├── nuscenes_database
+│   │   ├── nuscenes_infos_train.pkl
+│   │   ├── nuscenes_infos_val.pkl
+│   │   ├── nuscenes_infos_test.pkl
+│   │   ├── nuscenes_dbinfos_train.pkl
+│   │   ├── lidarseg
+│   │   |   ├── v1.0-trainval
+│   │   |   ├── v1.0-test
 
 ### ViTPointFuser
 Reference: https://github.com/huggingface/transformers
 - To train/test ViTPointFuser,
 1. Amend the configuration file in config/2DPASS-fuser-nuscenese.yaml
- - set training_detections_fuser: False, if you are training ViTPointFuser on a subset of the train-val dataset
+ - set training_detections_fuser: False, if you are training ViTPointFuser on a subset of the train-val dataset. Else, set this value as True when running test to use the entire dataset
  - set split_across_channels: True to split the object proposal feature map along the channel axis. Refer to report 3.1 ViTPointFuser for more information on this. Alternatively, if this is set to False, the object proposal feature map would not be split long the channels. The resulting feature map would be C x H x W, where C is channel width, H is height, and W is width.
  - Change ViT configurations in the vit key at the end of the file
+
+2. Change the variable self.saved_detections_roots = ["results","results_1"] in dataloader/pc_dataset to specify the data directories in which to find the saved object detections data.
+
+3. Run the file train_2dpass_fuser.py
+*** Note: the model_name variable saved in the configurations file is used for initialization of the model.
+To pretrain the a MLP head, set mlp_size and pretraining: True under vit key in the configs file. Update the model name in the config file to "_2dpass_fuser_variation_1"
+
+#### ViTPointFuser variants
 *** Note: there is a are multiple variations of ViTPointFuser.
 1. _2dpass_fuser_variation_1.py: 
 - ViTPointFuser with MLP head. Amend size of MLP hidden units with the config vit.mlp_size and set vit.pretraining = True. 
@@ -22,17 +55,29 @@ Reference: https://github.com/huggingface/transformers
 
 Note: If another model file is added and to be trained with the feature maps from object detection, ensure that the condition check in dataloaders/pc_dataset is satisfied. The condition is "if self.model_name.startswith("_2dpass_fuser")"
 
-2. Change the variable self.saved_detections_roots = ["results","results_1"] in dataloader/pc_dataset to specify the data directories in which to find the saved object detections data.
-
-3. Run the file train_2dpass_fuser.py
-*** Note: the model_name variable saved in the configurations file is used for initialization of the model.
-To pretrain the a MLP head, set mlp_size and pretraining: True under vit key in the configs file. Update the model name in the config file to "_2dpass_fuser_variation_1"
-
-
 ### BEVfusion
 contains files on 3D object detection
 Reference: https://github.com/mit-han-lab/bevfusion
 - Refer to https://github.com/mit-han-lab/bevfusion for information on the pretrained network, how to train and test the model
+- Note. Add a soft link with name "data" to the data root in the bevfusion folder. 
+The data root should have the following structure (refer to BEVFusion github for data preparation steps):
+mmdetection3d
+├── mmdet3d
+├── tools
+├── configs
+├── data
+│   ├── nuscenes
+│   │   ├── maps
+│   │   ├── samples
+│   │   ├── sweeps
+│   │   ├── v1.0-test
+|   |   ├── v1.0-trainval
+│   │   ├── nuscenes_database
+│   │   ├── nuscenes_infos_train.pkl
+│   │   ├── nuscenes_infos_val.pkl
+│   │   ├── nuscenes_infos_test.pkl
+│   │   ├── nuscenes_dbinfos_train.pkl
+
 - To save object detections:
 1. change the data_root in save_data() function in mmdet3d/models/fusion_models/bevfusion.py to the folder in which to save detection files. In the folder, there must be folders with the following structure:
 - train
