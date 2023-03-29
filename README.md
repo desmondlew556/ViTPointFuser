@@ -5,6 +5,7 @@ Reference: https://github.com/yanx27/2DPASS
 - Refer to https://github.com/yanx27/2DPASS for information on the pretrained network, how to train and test the model
 - Note. Add a soft link with name "dataset" to the data root in the bevfusion folder. 
 The data root should have the following structure (refer to BEVFusion and 2DPASS github for data preparation steps):
+```
 2dpass
 ├── network
 ├── dataloader
@@ -28,6 +29,7 @@ The data root should have the following structure (refer to BEVFusion and 2DPASS
 │   │   ├── lidarseg
 │   │   |   ├── v1.0-trainval
 │   │   |   ├── v1.0-test
+```
 
 ### ViTPointFuser
 Reference: https://github.com/huggingface/transformers
@@ -61,6 +63,7 @@ Reference: https://github.com/mit-han-lab/bevfusion
 - Refer to https://github.com/mit-han-lab/bevfusion for information on the pretrained network, how to train and test the model
 - Note. Add a soft link with name "data" to the data root in the bevfusion folder. 
 The data root should have the following structure (refer to BEVFusion github for data preparation steps):
+```
 mmdetection3d
 ├── mmdet3d
 ├── tools
@@ -77,6 +80,7 @@ mmdetection3d
 │   │   ├── nuscenes_infos_val.pkl
 │   │   ├── nuscenes_infos_test.pkl
 │   │   ├── nuscenes_dbinfos_train.pkl
+```
 
 - To save object detections:
 1. change the data_root in save_data() function in mmdet3d/models/fusion_models/bevfusion.py to the folder in which to save detection files. In the folder, there must be folders with the following structure:
