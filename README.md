@@ -41,9 +41,21 @@ Reference: https://github.com/huggingface/transformers
 
 2. Change the variable self.saved_detections_roots = ["results","results_1"] in dataloader/pc_dataset to specify the data directories in which to find the saved object detections data.
 
-3. Run the file train_2dpass_fuser.py
+3. Run the file train_2dpass_fuser.py<br>
 *** Note: the model_name variable saved in the configurations file is used for initialization of the model.
 To pretrain the a MLP head, set mlp_size and pretraining: True under vit key in the configs file. Update the model name in the config file to "_2dpass_fuser_variation_1"
+
+For training:
+```
+cd <root dir of this repo>
+python train_2dpass_fuser.py --config config/<config file> --gpu 0 --checkpoint <dir for the pytorch checkpoint>
+```
+For testing:
+```
+cd <root dir of this repo>
+python train_2dpass_fuser.py --config config/<config file> --gpu 0 --test --num_vote 2 --checkpoint <dir for the pytorch checkpoint>
+```
+Num_vote refers to the number of times to duplicate a sample for test-time augmentation.
 
 #### ViTPointFuser variants
 *** Note: there is a are multiple variations of ViTPointFuser.
@@ -97,6 +109,15 @@ mmdetection3d
 3. If desired, change thresholds for object detection by changing the variables self.bboxes_thresholds, and self.min_detections (number of detections to obtain by iteratively lowering thresholds according to self.bboxes_thresholds). Found in mmdet3d/models/fusion_models/bevfusion.py file.
 4. Run tools/save_detections.py
 
+To train:
+```
+torchpack dist-run -np 8 python tools/train.py configs/nuscenes/det/transfusion/secfpn/camera+lidar/swint_v0p075/convfuser.yaml --load_from pretrained/<checkpoint file>
+```
+
+To test:
+```
+torchpack dist-run -np 8 python tools/test.py configs/nuscenes/det/transfusion/secfpn/camera+lidar/swint_v0p075/convfuser.yaml --load_from pretrained/<checkpoint file> --eval bbox
+```
 Google drive link for saved ViTPointFuser models and configuration files:
 https://drive.google.com/drive/folders/1sV1W_y47RlW4HPUJy4a1iNSHX9e-dYFA?usp=share_link# ViTPointFuser
 
