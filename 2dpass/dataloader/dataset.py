@@ -465,11 +465,25 @@ def collate_fn_default(data):
         # accumulate detections only if they are not duplicated
         for d in data:
             for key in d['detected_obj_data']:
-                if key not in collated_detected_obj:
-                    collated_detected_obj[key] = []
-                collated_detected_obj[key].append(d['detected_obj_data'][key])
+                if isinstance(d['detected_obj_data'][key],dict):
+                    sub_dict = d['detected_obj_data'][key]
+                    if key not in collated_detected_obj:
+                        collated_detected_obj[key] = {}
+                        for sub_key in sub_dict:
+                            collated_detected_obj[key][sub_key] = []
+                    for sub_key in collated_detected_obj[key]:
+                        collated_detected_obj[key][sub_key].append(d['detected_obj_data'][key][sub_key])
+                    
+                else:
+                    if key not in collated_detected_obj:
+                        collated_detected_obj[key] = []
+                    collated_detected_obj[key].append(d['detected_obj_data'][key])
         for key in collated_detected_obj:
-            collated_detected_obj[key] = torch.cat(collated_detected_obj[key],axis = 0)
+            if isinstance(collated_detected_obj[key],dict):
+                for sub_key in collated_detected_obj[key]:
+                    collated_detected_obj[key][sub_key] = torch.cat(collated_detected_obj[key][sub_key],axis = 0)
+            else:
+                collated_detected_obj[key] = torch.cat(collated_detected_obj[key],axis = 0)
     else:
         collated_detected_obj = data[0]['detected_obj_data']
 

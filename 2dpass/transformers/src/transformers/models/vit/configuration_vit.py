@@ -107,6 +107,7 @@ class ViTConfig(PretrainedConfig):
         qkv_bias=True,
         encoder_stride=16,
         point_dim=None,
+        additional_feature=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -126,6 +127,7 @@ class ViTConfig(PretrainedConfig):
         self.qkv_bias = qkv_bias
         self.encoder_stride = encoder_stride
         self.point_dim = point_dim
+        self.additional_feature = additional_feature
 
 
 class ViTOnnxConfig(OnnxConfig):

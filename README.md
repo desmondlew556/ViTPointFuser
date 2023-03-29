@@ -11,12 +11,22 @@ Reference: https://github.com/huggingface/transformers
  - set training_detections_fuser: False, if you are training ViTPointFuser on a subset of the train-val dataset
  - set split_across_channels: True to split the object proposal feature map along the channel axis. Refer to report 3.1 ViTPointFuser for more information on this. Alternatively, if this is set to False, the object proposal feature map would not be split long the channels. The resulting feature map would be C x H x W, where C is channel width, H is height, and W is width.
  - Change ViT configurations in the vit key at the end of the file
-*** Note: there is a 2nd variation of ViTPointFuser that allows the changing of the size of the MLP in the classifier head. Amend the file in config/2DPASS-fuser-variant-nuscenese.yaml instead. The mlp_size variable is used to control the size of the mlp in the classifier head.
+*** Note: there is a are multiple variations of ViTPointFuser.
+1. _2dpass_fuser_variation_1.py: 
+- ViTPointFuser with MLP head. Amend size of MLP hidden units with the config vit.mlp_size and set vit.pretraining = True. 
+- Refer to the config file for reference. 2DPASS-channel-width-128-mlp-hiddensize-512--nuscenese-fuser.yaml
+2. _2dpass_fuser_variation_2.py: 
+- ViTPointFuser with point features from multiple scales. set vit.point_dim as a list of channel widths of the input feature, and vit.multi_scale_point_features_indices as a list of the indices of the point feature map from the SPVCNN to use. The length of both point_dim and multi_scale_point_features_indices must match. 
+- Additionally, set vit.additional_feature_list_channel_width as a list of input width of additional inputs to the ViTPointFuser model.
+- Refer to to the config file for reference2DPASS-channel-width-128-6-point-scales-2-attention-head-additional-features-MLP-nuscenese-fuser.yaml
 
-2. Change the variable self.saved_detections_roots = ["results","results_1"] in data_loader/pc_dataset to specify the data directories in which to find the saved object detections data.
+Note: If another model file is added and to be trained with the feature maps from object detection, ensure that the condition check in dataloaders/pc_dataset is satisfied. The condition is "if self.model_name.startswith("_2dpass_fuser")"
+
+2. Change the variable self.saved_detections_roots = ["results","results_1"] in dataloader/pc_dataset to specify the data directories in which to find the saved object detections data.
 
 3. Run the file train_2dpass_fuser.py
 *** Note: the model_name variable saved in the configurations file is used for initialization of the model.
+To pretrain the a MLP head, set mlp_size and pretraining: True under vit key in the configs file. Update the model name in the config file to "_2dpass_fuser_variation_1"
 
 
 ### BEVfusion
@@ -40,3 +50,6 @@ Reference: https://github.com/mit-han-lab/bevfusion
 
 Google drive link for saved ViTPointFuser models and configuration files:
 https://drive.google.com/drive/folders/1sV1W_y47RlW4HPUJy4a1iNSHX9e-dYFA?usp=share_link# ViTPointFuser
+
+### visualization
+Refer to visualization_.ipynb for attention scores heatmap

@@ -125,10 +125,12 @@ class get_model(LightningBaseModel):
             data_dict['loss_main_ce_vit']= loss_ce
             data_dict['loss_main_lovasz_vit']= loss_lovasz
             data_dict['loss_vit'] = loss_combined
-        
-        fuser_time = time.time()
-        print("base model took: %.3f sec, vit fuser took: %.3f sec"%(base_model_time-start_time,fuser_time-base_model_time))
-
+            
+            fuser_time = (time.time() - base_model_time)
+            average_time_per_detection = -1
+            if logits.shape[0]>0:
+                average_time_per_detection = fuser_time/logits.shape[0]
+            print("base model took: %.3f sec, vit fuser took: %.3f sec, average time per detection: %.7f sec"%(base_model_time-start_time,fuser_time,average_time_per_detection))
         return data_dict
         
     def get_points_inside_detected_boxes(self,feature_maps,point_cloud_xy_ranges,ref_xyz,ref_xyz_indices,point_labels,point_features):

@@ -168,13 +168,16 @@ class get_model(LightningBaseModel):
             data_dict = self.voxelizer(data_dict)
         data_dict = self.voxel_3d_generator(data_dict)
         enc_feats = []
+        self.saved_points_features = []
         for i in range(self.num_scales):
             results = self.spv_enc[i](data_dict)
             enc_feats.append(results)
             
-            if(i==self.num_scales-1):
-                self.saved_points_features = [results]
-
+            # save point features for each scale
+            self.saved_points_features.append(results)
+        
+        # reverse order but keep last scale (largest scale) at the first element.
+        self.saved_points_features = self.saved_points_features[::-1]
         output = torch.cat(enc_feats, dim=1)
         data_dict['logits'] = self.classifier(output)
 
@@ -182,6 +185,24 @@ class get_model(LightningBaseModel):
         data_dict = self.criterion(data_dict)
 
         return data_dict
+        # with torch.no_grad():
+        #     data_dict = self.voxelizer(data_dict)
+        # data_dict = self.voxel_3d_generator(data_dict)
+        # enc_feats = []
+        # for i in range(self.num_scales):
+        #     results = self.spv_enc[i](data_dict)
+        #     enc_feats.append(results)
+            
+        #     if(i==self.num_scales-1):
+        #         self.saved_points_features = [results]
+
+        # output = torch.cat(enc_feats, dim=1)
+        # data_dict['logits'] = self.classifier(output)
+
+        # data_dict['loss'] = 0.
+        # data_dict = self.criterion(data_dict)
+
+        # return data_dict
 
 
 class criterion(nn.Module):

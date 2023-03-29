@@ -31,6 +31,12 @@ from ...pytorch_utils import find_pruneable_heads_and_indices, prune_linear_laye
 
 from .configuration_vit import ViTConfig
 
+# from transformers.src.transformers.activations import ACT2FN
+# from transformers.src.transformers.modeling_outputs import BaseModelOutput, BaseModelOutputWithPooling, ImageClassifierOutput, MaskedLMOutput
+# from transformers.src.transformers.modeling_utils import PreTrainedModel
+# from transformers.src.transformers.pytorch_utils import find_pruneable_heads_and_indices, prune_linear_layer
+
+# from transformers.src.transformers.models.vit.configuration_vit import ViTConfig
 
 # General docstring
 _CONFIG_FOR_DOC = "ViTConfig"
@@ -48,6 +54,8 @@ VIT_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "google/vit-base-patch16-224",
     # See all ViT models at https://huggingface.co/models?filter=vit
 ]
+
+
 
 
 class ViTEmbeddings(nn.Module):
@@ -70,9 +78,37 @@ class ViTEmbeddings(nn.Module):
         self.point_encode = False
         if config.point_dim is not None:
             self.point_encode = True
+
+        # adding x,y position, confidence score and label
+        self.additional_inputs_list = None
+        
+        if hasattr(config, "additional_feature"):
+            self.additional_inputs_list = config.additional_feature
+        
         if self.point_encode:
-            self.point_encoder = nn.Linear(config.point_dim, config.hidden_size)
-            self.position_embeddings = nn.Parameter(torch.randn(1, num_patches + 2, config.hidden_size))
+            if isinstance(config.point_dim,list):
+                self.point_encoder = []
+                # add a linear mapping for each layer
+                for point_dim in config.point_dim:
+                    self.point_encoder.append(nn.Linear(point_dim,config.hidden_size))
+                
+                self.point_encoder = nn.ModuleList(self.point_encoder)
+                if self.additional_inputs_list is not None:
+                    self.features_encoder = []
+                    print("using position_scores_and_labels")
+                    for input_channel in self.additional_inputs_list:
+                        self.features_encoder.append(nn.Linear(input_channel,config.hidden_size))
+                    self.features_encoder = nn.ModuleList(self.features_encoder)
+                    print("number of additional inputs",len(self.additional_inputs_list))
+                    self.position_embeddings = nn.Parameter(torch.randn(1,num_patches + 1 + len(self.point_encoder) + len(self.features_encoder), config.hidden_size))
+                else:
+                    self.position_embeddings = nn.Parameter(torch.randn(1,num_patches + 1 + len(self.point_encoder), config.hidden_size))
+                print("number of layers", len(self.point_encoder))
+            else:   
+                self.point_encoder = nn.Linear(config.point_dim, config.hidden_size)
+                self.position_embeddings = nn.Parameter(torch.randn(1, num_patches + 2, config.hidden_size))
+                
+                assert self.additional_inputs_list is None, "using additional inputs only implemented for using multiscale point features"
 
 
     def interpolate_pos_encoding(self, embeddings: torch.Tensor, height: int, width: int) -> torch.Tensor:
@@ -115,6 +151,7 @@ class ViTEmbeddings(nn.Module):
         bool_masked_pos: Optional[torch.BoolTensor] = None,
         interpolate_pos_encoding: bool = False,
         point_feature: torch.Tensor = None,
+        additional_feature: torch.Tensor = None,
     ) -> torch.Tensor:
         if not self.point_encode:
             batch_size, num_channels, height, width = pixel_values.shape
@@ -142,13 +179,31 @@ class ViTEmbeddings(nn.Module):
         else:
             batch_size, num_channels, height, width = pixel_values.shape
             embeddings = self.patch_embeddings(pixel_values, interpolate_pos_encoding=interpolate_pos_encoding)
-            point_embeddings = self.point_encoder(point_feature).unsqueeze(1)
+            if isinstance(self.point_encoder,nn.ModuleList):
+                point_embeddings = []#torch.zeros(point_feature.shape[0]+[0,point_feature.shape[0]])
+                # apply linear transformation to each point feature
+                for i in range(len(self.point_encoder)):
+                    self.point_encoder[i] = self.point_encoder[i].cuda()
+                    point_embeddings.append(self.point_encoder[i](point_feature[:,i,:].squeeze(1)).unsqueeze(1))
+                point_embeddings = torch.cat(point_embeddings,dim=1)
+
+                if self.additional_inputs_list is not None:
+                    additional_embeddings = []
+                    for i in range(len(self.additional_inputs_list)):
+                        self.features_encoder[i] = self.features_encoder[i].cuda()
+                        additional_embeddings.append(self.features_encoder[i](additional_feature[i]).unsqueeze(1))
+                    additional_embeddings = torch.cat(additional_embeddings,dim=1)
+            else:
+                point_embeddings = self.point_encoder(point_feature).unsqueeze(1)
         
 
             # add the [CLS] token to the embedded patch tokens
             cls_tokens = self.cls_token.expand(batch_size, -1, -1)
-            
-            embeddings = torch.cat((cls_tokens, embeddings, point_embeddings), dim=1)
+
+            if self.additional_inputs_list is not None:
+                embeddings = torch.cat((cls_tokens, embeddings, point_embeddings, additional_embeddings), dim=1)
+            else:
+                embeddings = torch.cat((cls_tokens, embeddings, point_embeddings), dim=1)
 
             # add positional encoding to each token
             
@@ -215,6 +270,7 @@ class ViTSelfAttention(nn.Module):
         self.value = nn.Linear(config.hidden_size, self.all_head_size, bias=config.qkv_bias)
 
         self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
+        # self.attention_probs_avg = None
 
     def transpose_for_scores(self, x: torch.Tensor) -> torch.Tensor:
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
@@ -232,11 +288,22 @@ class ViTSelfAttention(nn.Module):
 
         # Take the dot product between "query" and "key" to get the raw attention scores.
         attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
-
+    
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-
+        
         # Normalize the attention scores to probabilities.
         attention_probs = nn.functional.softmax(attention_scores, dim=-1)
+        
+        # # save attention scores
+        # self.attention_probs_avg = torch.mean(torch.mean(attention_probs,dim=1,keepdim=True),dim=0,keepdim=True)[0][0]
+        # # save attention scores
+        # file_path = "attention_probs_for_one_sample"
+        # print("saving attention score to ",file_path)
+        # attention_probs_avg = torch.mean(torch.mean(attention_probs,dim=1,keepdim=True),dim=0,keepdim=True)[0][0]
+        # with open(file_path,'wb') as f:
+        #     import numpy as np
+        #     np.savez_compressed(f,attention_score=np.array(attention_probs_avg.cpu()))
+
 
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
@@ -522,6 +589,7 @@ class ViTModel(ViTPreTrainedModel):
         interpolate_pos_encoding: Optional[bool] = None,
         return_dict: Optional[bool] = None,
         point_feature: Optional[torch.Tensor] = None,
+        additional_feature: Optional[torch.Tensor] = None,
     ) -> Union[Tuple, BaseModelOutputWithPooling]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -545,7 +613,7 @@ class ViTModel(ViTPreTrainedModel):
             pixel_values = pixel_values.to(expected_dtype)
 
         embedding_output = self.embeddings(
-            pixel_values, bool_masked_pos=bool_masked_pos, interpolate_pos_encoding=interpolate_pos_encoding,point_feature=point_feature
+            pixel_values, bool_masked_pos=bool_masked_pos, interpolate_pos_encoding=interpolate_pos_encoding,point_feature=point_feature,additional_feature=additional_feature
         )
 
         encoder_outputs = self.encoder(
@@ -562,6 +630,14 @@ class ViTModel(ViTPreTrainedModel):
         if not return_dict:
             head_outputs = (sequence_output, pooled_output) if pooled_output is not None else (sequence_output,)
             return head_outputs + encoder_outputs[1:]
+        
+        # # # save attention scores
+        # for i in range(len(self.encoder.layer)):
+        #     file_path = "attention_probs_for_one_sample_layer_"
+        #     attention_probs_avg = self.encoder.layer[i].attention.attention.attention_probs_avg
+        #     with open(file_path+str(i),'wb') as f:
+        #         import numpy as np
+        #         np.savez_compressed(f,attention_score=np.array(attention_probs_avg.cpu()))
 
         return BaseModelOutputWithPooling(
             last_hidden_state=sequence_output,

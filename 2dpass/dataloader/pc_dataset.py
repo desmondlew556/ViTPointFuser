@@ -319,9 +319,13 @@ class nuScenes(data.Dataset):
                     else:
                         detections_feature_maps = torch.zeros((sample_data.shape[0],feature_map.shape[0],2*y_width,2*x_width))
                     coords = torch.zeros((sample_data.shape[0],4)) # -y,x,y,x
+                    labels = torch.zeros((sample_data.shape[0],1))
+                    scores = torch.zeros((sample_data.shape[0],1))
+                    centers = torch.zeros((sample_data.shape[0],2))
                     point_cloud_range = torch.tensor((metas[6],metas[5])) # gets min x and y values of point cloud
+
                     for idx in range(sample_data.shape[0]):
-                        x,y,_,_,_,_,_ = torch.tensor(sample_data[idx])
+                        x,y,_,_,_,label,score = torch.tensor(sample_data[idx])
                         BOX_DIM = 3
                         coord = torch.tensor((y-BOX_DIM,x-BOX_DIM,y+BOX_DIM,x+BOX_DIM))
                         # use this
@@ -362,9 +366,18 @@ class nuScenes(data.Dataset):
 
                         detections_feature_maps[idx,:]=fm_tmp
                         coords[idx,:]=coord
+                        labels[idx,:]=label
+                        scores[idx,:]=score
+                        centers[idx,:]=torch.tensor((x,y))
                     detections_data = {
                         'feature_maps':detections_feature_maps, # shape is N*128*12*12, where N is num detections
-                        "xy_range":coords # shape is N*4 [y_min,x_min,y_max,x_max]
+                        "xy_range":coords, # shape is N*4 [y_min,x_min,y_max,x_max]
+                        "additional_features":
+                            {
+                                "labels":labels,
+                                "scores":scores,
+                                "centers":centers,
+                            }
                     }
                     return detections_data
             except Exception as e:
@@ -374,7 +387,7 @@ class nuScenes(data.Dataset):
 
 
     def __getitem__(self, index):
-        if self.model_name == "_2dpass_fuser":
+        if self.model_name.startswith("_2dpass_fuser"):
             detected_obj_data = self.get_detected_objects(index,self.split_across_channels)
         else:
             detected_obj_data = {}

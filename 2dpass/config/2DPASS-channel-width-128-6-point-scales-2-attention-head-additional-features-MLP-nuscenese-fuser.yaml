@@ -1,11 +1,11 @@
 # Config format schema number
 format_version: 1
-training_detections_fuser: True
+training_detections_fuser: False
 split_across_channels: True
 ###################
 ## Model options
 model_params:
-  model_architecture: "_2dpass_fuser_variation_1"
+  model_architecture: "_2dpass_fuser_variation_2"
 
   input_dims: 4
   spatial_shape:
@@ -96,10 +96,10 @@ train_params:
   lambda_lovasz: 1
 
 vit:
-  point_dim: 256
+  point_dim: [256,256,256,256,256,256]
   hidden_size: 128
   num_hidden_layers: 2
-  num_attention_heads: 4
+  num_attention_heads: 2
   intermediate_size: 128
   hidden_act: "gelu"
   hidden_dropout_prob: 0.0
@@ -112,5 +112,7 @@ vit:
   qkv_bias: True
   encoder_stride: 6
   pool: False
+  multi_scale_point_features_indices: [0,1,2,3,4,5]
+  additional_feature_list_channel_width: [2,1,1]
   mlp_size: 512
   pretraining: True
