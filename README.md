@@ -45,12 +45,12 @@ Reference: https://github.com/huggingface/transformers
 *** Note: the model_name variable saved in the configurations file is used for initialization of the model.
 To pretrain the a MLP head, set mlp_size and pretraining: True under vit key in the configs file. Update the model name in the config file to "_2dpass_fuser_variation_1"
 
-For training:
+To train:
 ```
 cd <root dir of this repo>
 python train_2dpass_fuser.py --config config/<config file> --gpu 0 --checkpoint <dir for the pytorch checkpoint>
 ```
-For testing:
+To test:
 ```
 cd <root dir of this repo>
 python train_2dpass_fuser.py --config config/<config file> --gpu 0 --test --num_vote 2 --checkpoint <dir for the pytorch checkpoint>
@@ -123,3 +123,6 @@ https://drive.google.com/drive/folders/1sV1W_y47RlW4HPUJy4a1iNSHX9e-dYFA?usp=sha
 
 ### visualization
 Refer to visualization_.ipynb for attention scores heatmap
+
+### Downloading dependencies
+The bev2dpass_envt.yaml file provides a conda environment that could be used to quick-start the set-up. However, some required packages may not be downloaded. Refer to the dockerfile in BEVFusion github and 2DPASS readme for the required packages.
